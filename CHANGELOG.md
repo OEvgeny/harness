@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bumped [`@happy-dom/global-registrator@21.0.4`] and [`@onting/browser@0.1.1-main.202610251852.46007c3`]
+- Bumped [`@onting/stub@0.1.0-main.202610251830.dda9781`]
 
 ## [0.1.0] - 2026-07-24
 
