@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped [`@happy-dom/global-registrator@21.0.4`] and [`@onting/browser@0.1.1-main.202610251852.46007c3`]
+
 ## [0.1.0] - 2026-07-24
 
 ### Added

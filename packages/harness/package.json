@@ -50,7 +50,7 @@
   },
   "author": "William Wong (https://github.com/compulim)",
   "devDependencies": {
-    "@happy-dom/global-registrator": "^20.11.0",
+    "@happy-dom/global-registrator": "^21.0.4",
     "@onting/common": "^0.0.0-0",
     "@onting/rpc": "^0.3.0",
     "@onting/test-harness": "^0.0.0-0",
@@ -73,7 +73,7 @@
     "selenium-webdriver": "^4.46.0"
   },
   "dependencies": {
-    "@onting/browser": "^0.1.0",
+    "@onting/browser": "^0.1.1-main.202610251852.46007c3",
     "ci-info": "^4.4.0",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
