@@ -7,32 +7,90 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve as pathResolve } from 'node:path';
 import terminalImage from 'term-img';
-import { is, object, safeParse, string } from 'valibot';
-import { BrowserRunConsoleEvent, BrowserRunErrorEvent, type BrowserRunEventMap, BrowserRunLoadEvent } from './event.ts';
+import {
+  array,
+  check,
+  custom,
+  function_,
+  intersect,
+  is,
+  number,
+  object,
+  optional,
+  parse,
+  picklist,
+  pipe,
+  readonly,
+  record,
+  safeParse,
+  string,
+  union,
+  url,
+  type InferInput,
+  type InferOutput
+} from 'valibot';
+import { BrowserRunConsoleEvent, BrowserRunErrorEvent, BrowserRunLoadEvent, type BrowserRunEventMap } from './event.ts';
 import FileSystemSnapshotStore from './FileSystemSnapshotStore.ts';
 import createDummyDriverService from './private/createDummyDriverService.ts';
 import CustomEventTarget from './private/CustomEventTarget.ts';
 import unmarshalError, { errorLikeSchema } from './private/unmarshalError.ts';
 
-type BrowserRunInit = {
-  browser?: 'chrome' | 'edge' | 'firefox' | 'safari' | undefined;
-  snapshotPrefix?: string | undefined;
-  webDriverURL?: string | undefined;
-} & (
-  | {
-      stubImplementation: StubImplementation<AnyStub>;
-    }
-  | {
-      // Init fields from @onting/stub.
-      testFilePath: string;
-    }
+const stubImplementationSchema = pipe(
+  object({
+    ['~types']: object({ Stub: record(string(), function_()) }),
+    implement: function_(),
+    keys: array(string())
+  }),
+  readonly()
 );
+
+const browserRunInitSchema = intersect([
+  pipe(
+    object({
+      /**
+       * @default 'chrome'
+       */
+      browser: optional(picklist(['chrome', 'edge', 'firefox', 'safari']), 'chrome'),
+      snapshotPrefix: optional(string()),
+      /**
+       * Timeout in milliseconds, must be a positive number.
+       *
+       * @default 10_000
+       */
+      timeout: optional(
+        pipe(
+          number(),
+          check(value => value > 0, 'Must be a positive number')
+        ),
+        10_000
+      ),
+      webDriverURL: optional(pipe(string(), url()))
+    }),
+    readonly()
+  ),
+  union(
+    [
+      pipe(
+        object({
+          stubImplementation: custom<StubImplementation<AnyStub>>(
+            value => safeParse(stubImplementationSchema, value).success
+          )
+        }),
+        readonly()
+      ),
+      pipe(object({ testFilePath: string() }), readonly())
+    ],
+    'Must have either "stubImplementation" or "testFilePath"'
+  )
+]);
+
+type BrowserRunInit = InferInput<typeof browserRunInitSchema>;
 
 class BrowserRun extends CustomEventTarget<BrowserRunEventMap> {
   constructor(url: string, init: BrowserRunInit) {
     super();
 
-    void this.#asyncConstructor(url, init);
+    void this.#asyncConstructor(url, parse(browserRunInitSchema, init));
 
     this.#promise = new Promise((resolve, reject) => {
       this.addEventListener('error', ({ error }) => reject(error), { once: true });
@@ -40,8 +98,8 @@ class BrowserRun extends CustomEventTarget<BrowserRunEventMap> {
     });
   }
 
-  async #asyncConstructor(url: string, init: BrowserRunInit) {
-    const { browser = 'chrome', snapshotPrefix, webDriverURL } = init;
+  async #asyncConstructor(url: string, init: InferOutput<typeof browserRunInitSchema>) {
+    const { browser, snapshotPrefix, timeout, webDriverURL } = init;
 
     try {
       await using driverService: DriverService = webDriverURL
@@ -135,7 +193,10 @@ class BrowserRun extends CustomEventTarget<BrowserRunEventMap> {
 
       await webDriver.navigate().to(url);
 
-      const data = await promise;
+      const data = await Promise.race([
+        promise,
+        new Promise<Awaited<typeof promise>>((_, reject) => setTimeout(() => reject(new Error('Timed out')), timeout))
+      ]);
 
       this.dispatchEvent(new BrowserRunLoadEvent('load', { data }));
     } catch (error) {
@@ -154,3 +215,4 @@ class BrowserRun extends CustomEventTarget<BrowserRunEventMap> {
 }
 
 export default BrowserRun;
+export type { BrowserRunInit };
